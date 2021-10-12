@@ -1,5 +1,3 @@
-// ignore_for_file: unnecessary_new
-
 import 'dart:async';
 import 'dart:io';
 
@@ -17,18 +15,20 @@ class MyApp extends StatefulWidget {
 enum UniLinksType { string, uri }
 
 class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
-  String? _initialLink;
-  Uri? _initialUri;
-  String? _latestLink = 'Unknown';
-  Uri? _latestUri;
+  String _initialLink;
+  Uri _initialUri;
+  String _latestLink = 'Unknown';
+  Uri _latestUri;
 
-  StreamSubscription? _sub;
+  StreamSubscription _sub;
 
-  late TabController _tabController;
+  TabController _tabController;
   UniLinksType _type = UniLinksType.string;
 
-  final List<String>? _cmds = getCmds();
-  final TextStyle _cmdStyle = const TextStyle(fontFamily: 'Courier', fontSize: 12.0, fontWeight: FontWeight.w700);
+  final List<String> _cmds = getCmds();
+  final TextStyle _cmdStyle = const TextStyle(
+      fontFamily: 'Courier', fontSize: 12.0, fontWeight: FontWeight.w700);
+  final _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   @override
   initState() {
@@ -40,7 +40,7 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
 
   @override
   dispose() {
-    if (_sub != null) _sub?.cancel();
+    if (_sub != null) _sub.cancel();
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
@@ -58,40 +58,36 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
   /// An implementation using a [String] link
   Future<void> initPlatformStateForStringUniLinks() async {
     // Attach a listener to the links stream
-    if (Platform.isAndroid) {
-      _sub = getLinksStream().listen((link) {
-        if (!mounted) return;
-        setState(() {
-          _latestLink = link ?? 'Unknown';
-          _latestUri = null;
-          try {
-            if (link != null) _latestUri = Uri.parse(link);
-          } on FormatException {}
-        });
-      }, onError: (Object err) {
-        if (!mounted) return;
-        setState(() {
-          _latestLink = 'Failed to get latest link: $err.';
-          _latestUri = null;
-        });
+    _sub = getLinksStream().listen((String link) {
+      if (!mounted) return;
+      setState(() {
+        _latestLink = link ?? 'Unknown';
+        _latestUri = null;
+        try {
+          if (link != null) _latestUri = Uri.parse(link);
+        } on FormatException {}
       });
-    }
+    }, onError: (Object err) {
+      if (!mounted) return;
+      setState(() {
+        _latestLink = 'Failed to get latest link: $err.';
+        _latestUri = null;
+      });
+    });
 
     // Attach a second listener to the stream
-    if (Platform.isAndroid) {
-      getLinksStream().listen((link) {
-        print('got link: $link');
-      }, onError: (Object err) {
-        print('got err: $err');
-      });
-    }
+    getLinksStream().listen((String link) {
+      print('got link: $link');
+    }, onError: (Object err) {
+      print('got err: $err');
+    });
 
     // Get the latest link
     // Platform messages may fail, so we use a try/catch PlatformException.
     try {
       _initialLink = await getInitialLink();
       print('initial link: $_initialLink');
-      if (_initialLink != null) _initialUri = Uri.parse(_initialLink!);
+      if (_initialLink != null) _initialUri = Uri.parse(_initialLink);
     } on PlatformException {
       _initialLink = 'Failed to get initial link.';
       _initialUri = null;
@@ -114,7 +110,7 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
   /// An implementation using the [Uri] convenience helpers
   Future<void> initPlatformStateForUriUniLinks() async {
     // Attach a listener to the Uri links stream
-    _sub = getUriLinksStream().listen((uri) {
+    _sub = getUriLinksStream().listen((Uri uri) {
       if (!mounted) return;
       setState(() {
         _latestUri = uri;
@@ -129,7 +125,7 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
     });
 
     // Attach a second listener to the stream
-    getUriLinksStream().listen((uri) {
+    getUriLinksStream().listen((Uri uri) {
       print('got uri: ${uri?.path} ${uri?.queryParametersAll}');
     }, onError: (Object err) {
       print('got err: $err');
@@ -163,17 +159,18 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final queryParams = _latestUri?.queryParametersAll.entries.toList();
+    final queryParams = _latestUri?.queryParametersAll?.entries?.toList();
 
     return new MaterialApp(
       home: new Scaffold(
+        key: _scaffoldKey,
         appBar: new AppBar(
-          title: const Text('Plugin example app'),
+          title: new Text('Plugin example app'),
           bottom: new TabBar(
             controller: _tabController,
-            tabs: const <Widget>[
-              Tab(text: 'STRING LINK'),
-              Tab(text: 'URI'),
+            tabs: <Widget>[
+              new Tab(text: 'STRING LINK'),
+              new Tab(text: 'URI'),
             ],
           ),
         ),
@@ -199,9 +196,9 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
               children: queryParams?.map((item) {
                     return new ListTile(
                       title: new Text('${item.key}'),
-                      trailing: new Text('${item.value.join(', ')}'),
+                      trailing: new Text('${item.value?.join(', ')}'),
                     );
-                  }).toList() ??
+                  })?.toList() ??
                   <Widget>[
                     new ListTile(
                       dense: true,
@@ -233,37 +230,40 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _cmdsCard(List<String>? commands) {
+  Widget _cmdsCard(List<String> commands) {
+    Widget platformCmds;
+
+    if (commands == null) {
+      platformCmds = const Center(child: const Text('Unsupported platform'));
+    } else {
+      platformCmds = new Column(
+        children: <List<Widget>>[
+          [
+            const Text(
+                'To populate above fields open a terminal shell and run:\n')
+          ],
+          intersperse(
+              commands.map<Widget>((cmd) => new InkWell(
+                    onTap: () => _printAndCopy(cmd),
+                    child: new Text('\n$cmd\n', style: _cmdStyle),
+                  )),
+              const Text('or')),
+          [
+            new Text(
+                '(tap on any of the above commands to print it to'
+                ' the console/logger and copy to the device clipboard.)',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.caption),
+          ]
+        ].expand((el) => el).toList(),
+      );
+    }
+
     return new Card(
       margin: const EdgeInsets.only(top: 20.0),
       child: new Padding(
         padding: const EdgeInsets.all(10.0),
-        child: Builder(
-          builder: (context) {
-            if (commands == null) {
-              return const Center(child: Text('Unsupported platform'));
-            } else {
-              return new Column(
-                children: <List<Widget>>[
-                  [const Text('To populate above fields open a terminal shell and run:\n')],
-                  intersperse(
-                      commands.map<Widget>((cmd) => new InkWell(
-                            onTap: () => _printAndCopy(cmd, context),
-                            child: new Text('\n$cmd\n', style: _cmdStyle),
-                          )),
-                      const Text('or')),
-                  [
-                    new Text(
-                        '(tap on any of the above commands to print it to'
-                        ' the console/logger and copy to the device clipboard.)',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.caption),
-                  ]
-                ].expand((el) => el).toList(),
-              );
-            }
-          },
-        ),
+        child: platformCmds,
       ),
     );
   }
@@ -277,17 +277,17 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
     }
   }
 
-  Future<void> _printAndCopy(String cmd, BuildContext context) async {
+  Future<void> _printAndCopy(String cmd) async {
     print(cmd);
 
     await Clipboard.setData(new ClipboardData(text: cmd));
-    ScaffoldMessenger.of(context).showSnackBar(new SnackBar(
+    _scaffoldKey.currentState.showSnackBar(new SnackBar(
       content: const Text('Copied to Clipboard'),
     ));
   }
 }
 
-List<String>? getCmds() {
+List<String> getCmds() {
   String cmd;
   String cmdSuffix = '';
 
@@ -314,7 +314,7 @@ List<String>? getCmds() {
 List<Widget> intersperse(Iterable<Widget> list, Widget item) {
   final initialValue = <Widget>[];
   return list.fold(initialValue, (all, el) {
-    if (all.isNotEmpty) all.add(item);
+    if (all.length != 0) all.add(item);
     all.add(el);
     return all;
   });
