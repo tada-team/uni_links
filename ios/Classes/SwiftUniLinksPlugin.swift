@@ -24,9 +24,9 @@ public class SwiftUniLinksPlugin: NSObject, FlutterPlugin {
       case "getInitialLink":
         result(initialLink)
         break
-      // case "getLatestAppLink":
-      //   result(latestLink)
-      //   break      
+      case "getLatestAppLink":
+        result(latestLink)
+        break      
       default:
         result(FlutterMethodNotImplemented)
         break
@@ -34,31 +34,31 @@ public class SwiftUniLinksPlugin: NSObject, FlutterPlugin {
   }
 
   // Universal Links
-  public func application(
-    _ application: UIApplication,
-    continue userActivity: NSUserActivity,
-    restorationHandler: @escaping ([Any]) -> Void) -> Bool {
+  // public func application(
+  //   _ application: UIApplication,
+  //   continue userActivity: NSUserActivity,
+  //   restorationHandler: @escaping ([Any]) -> Void) -> Bool {
 
-    switch userActivity.activityType {
-      case NSUserActivityTypeBrowsingWeb:
-        guard let url = userActivity.webpageURL else {
-          return false
-        }
-        handleLink(url: url)
-        return true
-      default: return false
-    }
-  }
+  //   switch userActivity.activityType {
+  //     case NSUserActivityTypeBrowsingWeb:
+  //       guard let url = userActivity.webpageURL else {
+  //         return false
+  //       }
+  //       handleLink(url: url)
+  //       return true
+  //     default: return false
+  //   }
+  // }
 
   // Custom URL schemes
-  public func application(
-    _ application: UIApplication,
-    open url: URL,
-    options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+  // public func application(
+  //   _ application: UIApplication,
+  //   open url: URL,
+  //   options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
     
-    handleLink(url: url)
-    return true
-  }
+  //   handleLink(url: url)
+  //   return true
+  // }
 
   fileprivate func handleLink(url: URL) -> Void {
     debugPrint("iOS handleLink: \(url.absoluteString)")
